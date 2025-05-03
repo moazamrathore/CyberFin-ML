@@ -12,7 +12,7 @@ from sklearn.impute import SimpleImputer
 
 # Configure page
 st.set_page_config(
-    page_title="CYBER-ML PRO MADE BY SAMAD KIANI",
+    page_title="CYBER-ML PRO",
     page_icon="https://img.icons8.com/nolan/64/cyborg.png",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -161,14 +161,30 @@ st.markdown("""
         font-size: 1.2rem;
         text-shadow: 0 0 5px #ff00ff;
     }
+    /* Model training animation */
+    .training-animation {
+        text-align: center;
+        margin: 20px 0;
+        padding: 20px;
+        background-color: rgba(26, 0, 56, 0.7);
+        border: 1px solid #ff00ff;
+        border-radius: 10px;
+    }
+    .training-text {
+        color: #ff00ff;
+        font-family: monospace;
+        font-size: 1.3rem;
+        margin-top: 15px;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px #ff00ff;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Cyberpunk header with animated GIF
+# Cyberpunk header
 def display_header():
     st.markdown("""
     <div style="text-align: center; padding: 20px 0;">
-        <img src="https://i.gifer.com/YAhr.gif" width="150px" style="margin-bottom: 10px;">
         <h1 style="font-size: 3rem; letter-spacing: 3px;">📊 CYBER-ML ANALYTICS</h1>
         <p style="color: #00f2ff; font-size: 1.2rem;">[ NEURAL-NET PREDICTION ENGINE v2.0.77 ]</p>
         <div style="background: linear-gradient(90deg, rgba(255,0,255,0) 0%, rgba(255,0,255,1) 50%, rgba(255,0,255,0) 100%); height: 2px; margin: 20px 0;"></div>
@@ -179,8 +195,8 @@ def display_header():
 def custom_sidebar_header():
     st.sidebar.markdown("""
     <div style="text-align: center; margin-bottom: 20px;">
-        <img src="https://i.pinimg.com/originals/1c/62/fe/1c62fe38d065c0a2929357f01c1e118e.gif" width="100%">
         <h3 style="color: #ff00ff; letter-spacing: 2px; margin-top: 10px;">SYSTEM CONTROLS</h3>
+        <div style="background: linear-gradient(90deg, rgba(0,242,255,0) 0%, rgba(0,242,255,1) 50%, rgba(0,242,255,0) 100%); height: 1px; margin: 10px 0;"></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -188,9 +204,8 @@ def custom_sidebar_header():
 def cyberpunk_loading_animation():
     return """
     <div style="text-align: center; margin: 20px 0;">
-        <img src="https://i.gifer.com/5IPd.gif" width="150px">
         <p style="color: #00f2ff; margin-top: 10px; font-family: monospace; font-size: 1.2rem;">
-            INITIALIZING NEURAL NETWORKS...
+            ANALYZING DATA...
         </p>
     </div>
     """
@@ -300,50 +315,64 @@ def cyberpunk_scatter_plot(df, x, y):
     
     return fig
 
-# Updated cyberpunk actual vs predicted plot with line for actual and scatter for predicted
+# Updated cyberpunk actual vs predicted plot with trend line and scattered points
 def cyberpunk_actual_vs_predicted(results):
+    # Create a figure
     fig = go.Figure()
     
-    # Add actual values as a line plot
+    # Create scatter data for actual vs predicted
+    actual = results['Actual']
+    predicted = results['Predicted']
+    
+    # Calculate trend line
+    model = LinearRegression()
+    model.fit(actual.values.reshape(-1, 1), predicted.values.reshape(-1, 1))
+    x_range = np.linspace(min(actual), max(actual), 100)
+    y_range = model.predict(x_range.reshape(-1, 1)).flatten()
+    
+    # Add points
     fig.add_trace(
         go.Scatter(
-            x=results.index, 
-            y=results['Actual'], 
-            name='Actual', 
-            mode='lines+markers', 
-            line=dict(
-                color='#ff00ff',
-                width=2
-            ),
+            x=actual,
+            y=predicted,
+            mode='markers',
+            name='Predictions',
             marker=dict(
                 color='#ff00ff',
-                size=4,
+                size=8,
                 line=dict(width=1, color='#ff00ff'),
-                symbol='circle',
+                opacity=0.7
             )
         )
     )
     
-    # Add predicted values as scatter plot
+    # Add trend line
     fig.add_trace(
         go.Scatter(
-            x=results.index, 
-            y=results['Predicted'], 
-            name='Predicted', 
-            mode='markers', 
-            marker=dict(
-                color='#00f2ff',
-                size=8,
-                line=dict(width=1, color='#00f2ff'),
-                symbol='diamond',
-            )
+            x=x_range,
+            y=y_range,
+            mode='lines',
+            name='Trend',
+            line=dict(color='#00f2ff', width=3)
+        )
+    )
+    
+    # Add perfect prediction line (y=x)
+    fig.add_trace(
+        go.Scatter(
+            x=[min(actual), max(actual)],
+            y=[min(actual), max(actual)],
+            mode='lines',
+            name='Perfect Prediction',
+            line=dict(color='#ffff00', width=2, dash='dash')
         )
     )
     
     # Update layout
     fig.update_layout(
-        xaxis_title="Sample Index",
-        yaxis_title="Value",
+        title="Predicted vs Actual Values",
+        xaxis_title="Actual",
+        yaxis_title="Predicted",
         height=500,
         legend=dict(font=dict(color='#00f2ff')),
         plot_bgcolor='rgba(10, 10, 30, 0.7)',
@@ -482,13 +511,6 @@ def main():
         
         uploaded_file = st.file_uploader("UPLOAD DATASET:", type=["csv", "xlsx"])
         
-        if uploaded_file is None:
-            st.markdown("""
-            <div style="text-align: center; margin: 20px 0;">
-                <img src="https://i.pinimg.com/originals/16/69/e5/1669e57e3a48988ab764a33e3d050347.gif" width="100%">
-            </div>
-            """, unsafe_allow_html=True)
-        
         st.markdown("</div>", unsafe_allow_html=True)
         
         st.markdown("""
@@ -503,19 +525,12 @@ def main():
             st.session_state.clear()
             st.experimental_rerun()
         
-        st.markdown("""
-        <div style="text-align: center; margin-top: 20px;">
-            <img src="https://i.gifer.com/7D7o.gif" width="100%">
-        </div>
-        """, unsafe_allow_html=True)
-        
         st.markdown("</div>", unsafe_allow_html=True)
 
     # Step 1: Data Upload
     st.markdown("""
     <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
         <h2 style="display: flex; align-items: center; gap: 10px;">
-            <img src="https://i.gifer.com/7JcU.gif" width="30px"> 
             DATA UPLOAD & SELECTION
         </h2>
     """, unsafe_allow_html=True)
@@ -547,12 +562,6 @@ def main():
             with st.expander("🔍 SELECT FEATURES & TARGET VARIABLES"):
                 st.markdown("<div class='feature-selector'>", unsafe_allow_html=True)
                 
-                st.markdown("""
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <img src="https://i.gifer.com/KbIm.gif" width="100px">
-                </div>
-                """, unsafe_allow_html=True)
-                
                 all_cols = df.columns.tolist()
                 target = st.selectbox("SELECT TARGET VARIABLE:", numeric_cols, index=len(numeric_cols)-1)
                 default_features = [col for col in numeric_cols if col != target][:3]
@@ -575,7 +584,6 @@ def main():
     else:
         st.markdown("""
         <div class='feature-selector' style="text-align: center;">
-            <img src="https://i.gifer.com/WMT.gif" width="200px" style="margin: 20px 0;">
             <h3 style="color: #ff00ff; margin-bottom: 15px;">HOW TO USE THE CYBER-ML SYSTEM:</h3>
             <ol style="text-align: left; color: #00f2ff; font-family: 'Courier New', monospace; font-size: 1.1rem;">
                 <li>Upload any CSV or Excel file with numeric data</li>
@@ -594,7 +602,6 @@ def main():
         st.markdown("""
         <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #00f2ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
-                <img src="https://i.gifer.com/7H27.gif" width="30px"> 
                 DATA PREPROCESSING
             </h2>
         """, unsafe_allow_html=True)
@@ -726,13 +733,6 @@ def main():
                     st.markdown("<h4 style='color: #00f2ff; text-align: center;'>AFTER</h4>", unsafe_allow_html=True)
                     st.dataframe(preprocessed_df.describe().style.format("{:.2f}"), height=200)
         
-        # Display preprocessing animation
-        st.markdown("""
-        <div style="text-align: center; margin: 20px 0;">
-            <img src="https://i.gifer.com/embedded/download/XVnS.gif" width="100px" style="margin-bottom: 10px;">
-        </div>
-        """, unsafe_allow_html=True)
-        
         st.markdown("</div>", unsafe_allow_html=True)
 
     # Step 3: Data Analysis
@@ -740,7 +740,6 @@ def main():
         st.markdown("""
         <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
-                <img src="https://i.gifer.com/XOsX.gif" width="30px"> 
                 DATA ANALYSIS
             </h2>
         """, unsafe_allow_html=True)
@@ -765,13 +764,7 @@ def main():
         fig = cyberpunk_scatter_plot(df, selected_feature, target)
         st.plotly_chart(fig, use_container_width=True)
             
-        st.markdown("""
-        <div style="text-align: center; margin: 20px 0;">
-            <img src="https://i.gifer.com/A34R.gif" width="100px" style="margin-bottom: 10px;">
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("INITIALIZE NEURAL NETWORKS", key="train_model"):
+        if st.button("TRAIN THE MODEL", key="train_model"):
             st.session_state.steps['ready_for_model'] = True
         
         st.markdown("</div>", unsafe_allow_html=True)
@@ -781,7 +774,6 @@ def main():
         st.markdown("""
         <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #00f2ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
-                <img src="https://i.gifer.com/3Q7h.gif" width="30px"> 
                 MODEL TRAINING
             </h2>
         """, unsafe_allow_html=True)
@@ -813,11 +805,8 @@ def main():
         
         with st.spinner(""):
             st.markdown("""
-            <div style="text-align: center; margin: 20px 0;">
-                <img src="https://i.gifer.com/QQrP.gif" width="200px">
-                <p style="color: #ff00ff; margin-top: 15px; font-family: 'Courier New', monospace; font-size: 1.3rem;">
-                    TRAINING NEURAL NETWORKS...
-                </p>
+            <div class="training-animation">
+                <p class="training-text">TRAINING NEURAL NETWORKS...</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -829,7 +818,6 @@ def main():
             st.session_state.predictions = {'y_test': y_test, 'y_pred': y_pred, 'X_test': X_test}
             
             cyber_success("MODEL TRAINED SUCCESSFULLY!")
-            st.balloons()
         
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -838,7 +826,6 @@ def main():
         st.markdown("""
         <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
-                <img src="https://i.gifer.com/7V7z.gif" width="30px"> 
                 MODEL EVALUATION
             </h2>
         """, unsafe_allow_html=True)
@@ -869,7 +856,7 @@ def main():
         
         st.markdown("""
         <h3 style="color: #ff00ff; text-align: center; margin-top: 30px; margin-bottom: 20px; text-shadow: 0 0 10px #ff00ff;">
-            ACTUAL VS PREDICTED VALUES
+            PREDICTED VS ACTUAL VALUES
         </h3>
         """, unsafe_allow_html=True)
         
@@ -891,12 +878,6 @@ def main():
             fig = cyberpunk_feature_importance(importance)
             st.plotly_chart(fig, use_container_width=True)
         
-        st.markdown("""
-        <div style="text-align: center; margin: 20px 0;">
-            <img src="https://i.gifer.com/DKMj.gif" width="150px" style="margin-bottom: 10px;">
-        </div>
-        """, unsafe_allow_html=True)
-        
         csv = results.to_csv(index=False).encode('utf-8')
         st.download_button("DOWNLOAD PREDICTIONS", csv, "cyber_predictions.csv", "text/csv")
         
@@ -905,7 +886,6 @@ def main():
         # Cyberpunk footer
         st.markdown("""
         <div style="text-align: center; margin-top: 30px; opacity: 0.7;">
-            <img src="https://i.gifer.com/FEc.gif" width="400px">
             <p style="color: #00f2ff; font-family: 'Courier New', monospace; margin-top: 10px; font-size: 0.8rem;">
                 CYBER-ML v2.0.77 | ©  MOAZAM RATHORE | CYBER FINANCE ML
             </p>
