@@ -1,5 +1,3 @@
-# CyberFin-ML
-A comprehensive Streamlit application for your financial trading and analysis platform with a cyberpunk theme.
 # CYBER-ML: Neural Network Prediction Engine
 <div align="center">
   <h3>A cyberpunk-themed machine learning application for predictive analytics</h3>
