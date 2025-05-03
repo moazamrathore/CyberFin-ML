@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import statsmodels.api as sm  # <-- Required for trendline='ols'
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
@@ -12,7 +13,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 # Configure page
 st.set_page_config(
-    page_title="ML PRO MADE BY SAMAD KIANI",
+    page_title="CyberFin-ML",
     page_icon="https://tse2.mm.bing.net/th?id=OIP.Fkdoyke5qijSDVWyGKJB9QHaHk&pid=Api&P=0&h=220",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -22,7 +23,6 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
-
     .stApp {
         background-image: url('https://wallpaperaccess.com/full/3697808.gif');
         background-size: cover;
@@ -31,7 +31,6 @@ st.markdown("""
         color: #00f7ff;
         font-family: 'Orbitron', sans-serif;
     }
-
     .main {
         background-color: rgba(20, 20, 20, 0.75);
         padding: 2rem;
@@ -39,12 +38,10 @@ st.markdown("""
         box-shadow: 0 0 20px #00f7ff;
         color: #fff;
     }
-
     h1, h2, h3 {
         color: #f000ff;
         text-shadow: 0 0 8px #f000ff;
     }
-
     .stButton>button {
         background: linear-gradient(to right, #ff0057, #7a00ff);
         color: white;
@@ -55,40 +52,34 @@ st.markdown("""
         transition: 0.3s ease-in-out;
         box-shadow: 0 0 15px #ff00f7;
     }
-
     .stButton>button:hover {
         box-shadow: 0 0 25px #ff00f7, 0 0 30px #7a00ff;
         transform: scale(1.05);
     }
-
     .stDownloadButton>button {
         background: linear-gradient(to right, #00f0ff, #00ffa6);
         color: black;
         font-weight: bold;
         border-radius: 6px;
     }
-
     .sidebar .sidebar-content {
         background-color: rgba(30, 30, 30, 0.85);
         border-left: 4px solid #ff00f7;
         padding: 20px;
         color: #00f7ff;
     }
-
     .feature-selector {
         background-color: rgba(255, 255, 255, 0.05);
         border: 1px solid #00f7ff;
         padding: 15px;
         border-radius: 12px;
     }
-
     .st-expanderContent {
         background-color: rgba(255, 255, 255, 0.05);
         border: 1px solid #7a00ff;
         padding: 1rem;
         border-radius: 10px;
     }
-
     .metric-label, .metric-value {
         color: #00f7ff;
     }
@@ -110,7 +101,6 @@ def main():
     for key, value in session_defaults.items():
         st.session_state.setdefault(key, value)
 
-    # Sidebar Configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
         uploaded_file = st.file_uploader("Upload Dataset:", type=["csv", "xlsx"])
@@ -120,9 +110,9 @@ def main():
         test_size = st.slider("Test Size Ratio:", 0.1, 0.5, 0.2)
         st.button("Reset Session", on_click=lambda: st.session_state.clear())
 
-    # Step 1: Data Upload
     st.header("1. Data Upload & Selection")
     st.markdown("![HUD Scan](https://media.giphy.com/media/PEt5GZSmmkP44/giphy.gif)")
+
     if uploaded_file:
         try:
             df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
@@ -136,7 +126,7 @@ def main():
             st.success(f"✅ Successfully loaded {len(df)} records")
 
             st.write("### Dataset Preview:")
-            st.dataframe(df.head().style.format("{:.2f}", subset=numeric_cols), height=250)
+            st.dataframe(df.head(), height=250)
 
             with st.expander("🔍 Select Features & Target"):
                 st.markdown("<div class='feature-selector'>", unsafe_allow_html=True)
@@ -155,24 +145,13 @@ def main():
                         st.session_state.steps['processed'] = True
                         st.success("Features and target confirmed!")
                 st.markdown("</div>", unsafe_allow_html=True)
-
         except Exception as e:
             st.error(f"Error loading file: {str(e)}")
-    else:
-        st.markdown("""
-        <div class='feature-selector'>
-        📁 **How to Use:**
-        1. Upload any CSV or Excel file with numeric data  
-        2. Select target variable (what you want to predict)  
-        3. Choose features (variables used for prediction)  
-        4. The system will automatically handle the rest  
-        </div>
-        """, unsafe_allow_html=True)
 
-    # Step 2: Data Analysis
     if st.session_state.steps['processed']:
         st.header("2. Data Analysis")
         st.markdown("![Neon Glitch](https://media.giphy.com/media/Y3KmqWYO3l3TxeGlo2/giphy.gif)")
+
         df = st.session_state.data
         features = st.session_state.features
         target = st.session_state.target
@@ -193,9 +172,9 @@ def main():
         if st.button("🚀 Proceed to Model Training"):
             st.session_state.steps['ready_for_model'] = True
 
-    # Step 3: Model Training
     if st.session_state.steps.get('ready_for_model'):
         st.header("3. Model Training")
+
         df = st.session_state.data
         features = st.session_state.features
         target = st.session_state.target
@@ -220,13 +199,12 @@ def main():
             st.success("Model trained successfully!")
             st.balloons()
 
-    # Step 4: Evaluation
     if st.session_state.steps.get('trained'):
         st.header("4. Model Evaluation")
+
         predictions = st.session_state.predictions
         y_test = predictions['y_test']
         y_pred = predictions['y_pred']
-        X_test = predictions['X_test']
 
         col1, col2 = st.columns(2)
         with col1:
