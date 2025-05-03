@@ -1,199 +1,259 @@
+# app.py - Cyberpunk-Themed Universal ML Platform
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
-import plotly.graph_objects as go
 import plotly.express as px
-import datetime
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.cluster import KMeans
-from sklearn.metrics import mean_squared_error, accuracy_score, silhouette_score
+import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
-from io import BytesIO
-from fpdf import FPDF
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
 
-# --- Set Page ---
-st.set_page_config(page_title="CyberFinance Neo", layout="wide", page_icon="⚡")
+# Configure page
+st.set_page_config(
+    page_title="ML PRO MADE BY SAMAD KIANI",
+    page_icon="https://tse2.mm.bing.net/th?id=OIP.Fkdoyke5qijSDVWyGKJB9QHaHk&pid=Api&P=0&h=220",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- Apply Cyberpunk CSS ---
+# Custom CSS: Cyberpunk Styling
 st.markdown("""
 <style>
-    html, body, [class*="css"] {
-        background-color: #0a0a0f !important;
-        color: #00ff9d !important;
-        font-family: 'Courier New', Courier, monospace;
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
+
+    .stApp {
+        background-image: url('https://wallpaperaccess.com/full/3697808.gif');
+        background-size: cover;
+        background-attachment: fixed;
+        background-position: center;
+        color: #00f7ff;
+        font-family: 'Orbitron', sans-serif;
     }
+
+    .main {
+        background-color: rgba(20, 20, 20, 0.75);
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 0 20px #00f7ff;
+        color: #fff;
+    }
+
     h1, h2, h3 {
-        color: #00ccff !important;
-        text-shadow: 0 0 10px #00ccff90;
+        color: #f000ff;
+        text-shadow: 0 0 8px #f000ff;
     }
+
     .stButton>button {
-        background-color: #6600cc !important;
+        background: linear-gradient(to right, #ff0057, #7a00ff);
         color: white;
-        border: 1px solid #9933ff;
-        border-radius: 5px;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: bold;
+        transition: 0.3s ease-in-out;
+        box-shadow: 0 0 15px #ff00f7;
     }
+
     .stButton>button:hover {
-        background-color: #9933ff !important;
-        border: 1px solid #cc99ff;
+        box-shadow: 0 0 25px #ff00f7, 0 0 30px #7a00ff;
+        transform: scale(1.05);
+    }
+
+    .stDownloadButton>button {
+        background: linear-gradient(to right, #00f0ff, #00ffa6);
+        color: black;
+        font-weight: bold;
+        border-radius: 6px;
+    }
+
+    .sidebar .sidebar-content {
+        background-color: rgba(30, 30, 30, 0.85);
+        border-left: 4px solid #ff00f7;
+        padding: 20px;
+        color: #00f7ff;
+    }
+
+    .feature-selector {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid #00f7ff;
+        padding: 15px;
+        border-radius: 12px;
+    }
+
+    .st-expanderContent {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid #7a00ff;
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .metric-label, .metric-value {
+        color: #00f7ff;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Header with Cyberpunk Branding ---
-st.markdown("""
-<div style='text-align: center; padding: 10px; background: linear-gradient(90deg, #0a0a0f, #15151e, #0a0a0f); border-radius: 10px;'>
-    <h1 style='font-size: 42px;'>⚡ CYBER<span style='color: #ff0066;'>FINANCE</span> NEO</h1>
-    <p style='color: #00ff9d; font-size: 16px;'>TradingView-style Market Analysis + ML Predictions</p>
-    <img src='https://media.giphy.com/media/RKvvvZ1VQKX6jA0yhc/giphy.gif' width='70%' style='border-radius: 10px; border: 1px solid #9933ff;'/>
-</div>
-""", unsafe_allow_html=True)
-# --- Sidebar Controls ---
-st.sidebar.markdown("## 🔧 Controls")
-asset_type = st.sidebar.radio("Asset Type", ["Stocks", "Crypto", "Forex"])
-ticker = st.sidebar.text_input("Symbol", "AAPL")
-start_date = st.sidebar.date_input("Start Date", datetime.date.today() - datetime.timedelta(days=365))
-end_date = st.sidebar.date_input("End Date", datetime.date.today())
-interval = st.sidebar.selectbox("Interval", ["1d", "1h", "1wk", "1mo"], index=0)
-indicators = st.sidebar.multiselect("Indicators", ["MA20", "MA50", "RSI", "MACD"], default=["MA20", "MACD"])
-model_choice = st.sidebar.selectbox("ML Model", ["None", "Linear Regression", "Logistic Regression", "K-Means Clustering"])
-load_data = st.sidebar.button("🚀 Load Data")
+# Main Function
+def main():
+    st.markdown('<div class="main">', unsafe_allow_html=True)
+    st.title("📊 Universal ML Analysis Platform")
+    st.markdown("![Cyberpunk Banner](https://media.giphy.com/media/UqZQX3i9mwybTzGk0R/giphy.gif)")
+    st.markdown("---")
 
-# --- Fetch Market Data ---
-@st.cache_data
-def fetch_data(ticker, start, end, interval):
-    try:
-        df = yf.download(ticker, start=start, end=end, interval=interval)
-        return df
-    except Exception as e:
-        st.error(f"Error fetching data: {e}")
-        return pd.DataFrame()
+    session_defaults = {
+        'data': None, 'model': None, 'features': [], 'target': None,
+        'steps': {'loaded': False, 'processed': False, 'trained': False},
+        'predictions': None
+    }
+    for key, value in session_defaults.items():
+        st.session_state.setdefault(key, value)
 
-# --- Download Helpers ---
-def convert_df_to_csv(df):
-    return df.to_csv(index=True).encode('utf-8')
+    # Sidebar Configuration
+    with st.sidebar:
+        st.header("⚙️ Configuration")
+        uploaded_file = st.file_uploader("Upload Dataset:", type=["csv", "xlsx"])
+        st.markdown("---")
+        st.header("🧠 Model Settings")
+        model_type = st.selectbox("Select Model:", ["Linear Regression", "Random Forest"])
+        test_size = st.slider("Test Size Ratio:", 0.1, 0.5, 0.2)
+        st.button("Reset Session", on_click=lambda: st.session_state.clear())
 
-def generate_pdf_report(metrics: dict, model_name: str) -> BytesIO:
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=14)
-    pdf.set_text_color(0, 255, 157)
-    pdf.cell(200, 10, txt=f"CyberFinance Report - {model_name}", ln=True, align="C")
-    pdf.set_font("Arial", size=12)
-    pdf.set_text_color(255, 255, 255)
-    for key, value in metrics.items():
-        pdf.cell(200, 10, txt=f"{key}: {value}", ln=True, align="L")
-    output = BytesIO()
-    pdf.output(output)
-    output.seek(0)
-    return output
-# --- Load Data and Plot ---
-if load_data:
-    df = fetch_data(ticker, start_date, end_date, interval)
-    if df.empty:
-        st.warning("No data found for this symbol and date range.")
+    # Step 1: Data Upload
+    st.header("1. Data Upload & Selection")
+    st.markdown("![HUD Scan](https://media.giphy.com/media/PEt5GZSmmkP44/giphy.gif)")
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
+            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+            if len(numeric_cols) < 2:
+                st.error("Dataset needs at least 2 numeric columns for analysis")
+                return
+
+            st.session_state.data = df
+            st.session_state.steps['loaded'] = True
+            st.success(f"✅ Successfully loaded {len(df)} records")
+
+            st.write("### Dataset Preview:")
+            st.dataframe(df.head().style.format("{:.2f}", subset=numeric_cols), height=250)
+
+            with st.expander("🔍 Select Features & Target"):
+                st.markdown("<div class='feature-selector'>", unsafe_allow_html=True)
+                target = st.selectbox("Select Target Variable:", numeric_cols, index=len(numeric_cols)-1)
+                default_features = [col for col in numeric_cols if col != target][:3]
+                features = st.multiselect("Select Features:", numeric_cols, default=default_features)
+
+                if st.button("Confirm Selection"):
+                    if len(features) < 1:
+                        st.error("Please select at least one feature")
+                    elif target in features:
+                        st.error("Target variable cannot be a feature")
+                    else:
+                        st.session_state.features = features
+                        st.session_state.target = target
+                        st.session_state.steps['processed'] = True
+                        st.success("Features and target confirmed!")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"Error loading file: {str(e)}")
     else:
-        st.success(f"Loaded {len(df)} rows for {ticker}")
-        st.dataframe(df.tail())
+        st.markdown("""
+        <div class='feature-selector'>
+        📁 **How to Use:**
+        1. Upload any CSV or Excel file with numeric data  
+        2. Select target variable (what you want to predict)  
+        3. Choose features (variables used for prediction)  
+        4. The system will automatically handle the rest  
+        </div>
+        """, unsafe_allow_html=True)
 
-        # --- Calculate Technical Indicators ---
-        if "MA20" in indicators:
-            df["MA20"] = df["Close"].rolling(20).mean()
-        if "MA50" in indicators:
-            df["MA50"] = df["Close"].rolling(50).mean()
-        if "RSI" in indicators:
-            delta = df["Close"].diff()
-            gain = delta.clip(lower=0).rolling(14).mean()
-            loss = -delta.clip(upper=0).rolling(14).mean()
-            rs = gain / loss
-            df["RSI"] = 100 - (100 / (1 + rs))
-        if "MACD" in indicators:
-            df["EMA12"] = df["Close"].ewm(span=12).mean()
-            df["EMA26"] = df["Close"].ewm(span=26).mean()
-            df["MACD"] = df["EMA12"] - df["EMA26"]
-            df["Signal"] = df["MACD"].ewm(span=9).mean()
+    # Step 2: Data Analysis
+    if st.session_state.steps['processed']:
+        st.header("2. Data Analysis")
+        st.markdown("![Neon Glitch](https://media.giphy.com/media/Y3KmqWYO3l3TxeGlo2/giphy.gif)")
+        df = st.session_state.data
+        features = st.session_state.features
+        target = st.session_state.target
 
-        # --- Plot Chart ---
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("### Feature-Target Relationships")
+            selected_feature = st.selectbox("Select feature to plot:", features)
+            fig = px.scatter(df, x=selected_feature, y=target, trendline="ols", height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.write("### Correlation Matrix")
+            corr_matrix = df[features + [target]].corr()
+            fig = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale='Blues', aspect="auto")
+            st.plotly_chart(fig, use_container_width=True)
+
+        if st.button("🚀 Proceed to Model Training"):
+            st.session_state.steps['ready_for_model'] = True
+
+    # Step 3: Model Training
+    if st.session_state.steps.get('ready_for_model'):
+        st.header("3. Model Training")
+        df = st.session_state.data
+        features = st.session_state.features
+        target = st.session_state.target
+
+        X = df[features]
+        y = df[target]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+
+        model = LinearRegression() if model_type == "Linear Regression" else RandomForestRegressor(n_estimators=100, random_state=42)
+
+        with st.spinner(f"Training {model_type}..."):
+            model.fit(X_train_scaled, y_train)
+            st.session_state.model = model
+            st.session_state.steps['trained'] = True
+
+            y_pred = model.predict(X_test_scaled)
+            st.session_state.predictions = {'y_test': y_test, 'y_pred': y_pred, 'X_test': X_test}
+            st.success("Model trained successfully!")
+            st.balloons()
+
+    # Step 4: Evaluation
+    if st.session_state.steps.get('trained'):
+        st.header("4. Model Evaluation")
+        predictions = st.session_state.predictions
+        y_test = predictions['y_test']
+        y_pred = predictions['y_pred']
+        X_test = predictions['X_test']
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("RMSE", f"{np.sqrt(mean_squared_error(y_test, y_pred)):.2f}")
+        with col2:
+            st.metric("R² Score", f"{r2_score(y_test, y_pred):.2f}")
+
+        st.write("### Actual vs Predicted Values")
+        results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred}).reset_index(drop=True)
+
         fig = go.Figure()
-        fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'],
-                                     low=df['Low'], close=df['Close'], name='Price'))
-
-        if "MA20" in df:
-            fig.add_trace(go.Scatter(x=df.index, y=df["MA20"], name="MA20", line=dict(color="cyan")))
-        if "MA50" in df:
-            fig.add_trace(go.Scatter(x=df.index, y=df["MA50"], name="MA50", line=dict(color="magenta")))
-
-        fig.update_layout(title=f"{ticker} Price Chart", template="plotly_dark", height=600)
+        fig.add_trace(go.Scatter(x=results.index, y=results['Actual'], name='Actual', mode='markers', marker=dict(color='#ff007f')))
+        fig.add_trace(go.Scatter(x=results.index, y=results['Predicted'], name='Predicted', mode='markers', marker=dict(color='#00fff7')))
+        fig.update_layout(xaxis_title="Sample Index", yaxis_title="Value", height=500)
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- Prepare Data for ML ---
-        df['Target_Reg'] = df['Close'].shift(-1)
-        df['Target_Cls'] = (df['Target_Reg'] > df['Close']).astype(int)
-        for i in range(1, 6):
-            df[f'Lag_{i}'] = df['Close'].shift(i)
-        df.dropna(inplace=True)
+        if model_type == "Random Forest":
+            st.write("### Feature Importance")
+            importance = pd.DataFrame({'Feature': st.session_state.features, 'Importance': st.session_state.model.feature_importances_})
+            importance = importance.sort_values('Importance', ascending=False)
+            fig = px.bar(importance, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Blues')
+            st.plotly_chart(fig, use_container_width=True)
 
-        features = ['Close'] + [f'Lag_{i}' for i in range(1, 6)]
-        X = df[features]
+        csv = results.to_csv(index=False).encode('utf-8')
+        st.download_button("💾 Download Predictions", csv, "predictions.csv", "text/csv")
 
-        # --- Run ML Model ---
-        if model_choice == "Linear Regression":
-            y = df['Target_Reg']
-            X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.2)
-            model = LinearRegression()
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            rmse = mean_squared_error(y_test, preds) ** 0.5
-            st.success(f"Linear Regression RMSE: {rmse:.2f}")
-            st.line_chart(pd.DataFrame({'Actual': y_test, 'Predicted': preds}, index=y_test.index))
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        elif model_choice == "Logistic Regression":
-            y = df['Target_Cls']
-            X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.2)
-            model = LogisticRegression()
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            acc = accuracy_score(y_test, preds)
-            st.success(f"Logistic Regression Accuracy: {acc:.2%}")
-            st.bar_chart(pd.DataFrame({'Actual': y_test, 'Predicted': preds}, index=y_test.index))
-
-        elif model_choice == "K-Means Clustering":
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-            scores = []
-            for k in range(2, 5):
-                km = KMeans(n_clusters=k, random_state=42).fit(X_scaled)
-                score = silhouette_score(X_scaled, km.labels_)
-                scores.append((k, score))
-            best_k = max(scores, key=lambda x: x[1])[0]
-            final_km = KMeans(n_clusters=best_k, random_state=42).fit(X_scaled)
-            st.success(f"Best Clusters: {best_k}")
-            df['Cluster'] = final_km.labels_
-            st.dataframe(df[['Close', 'Cluster']].tail())
-            st.scatter_chart(df[['Lag_1', 'Lag_2', 'Cluster']])
-        # --- File Downloads ---
-        st.subheader("📥 Download Your Data")
-        csv = convert_df_to_csv(df)
-        st.download_button("Download CSV", data=csv, file_name=f"{ticker}_data.csv", mime='text/csv')
-
-        if model_choice != "None":
-            metrics = {"Model": model_choice}
-            if model_choice == "Linear Regression":
-                metrics["RMSE"] = round(rmse, 2)
-            elif model_choice == "Logistic Regression":
-                metrics["Accuracy"] = f"{acc:.2%}"
-            elif model_choice == "K-Means Clustering":
-                metrics["Best K"] = best_k
-            pdf = generate_pdf_report(metrics, model_choice)
-            st.download_button("📄 Download Report PDF", data=pdf, file_name="report.pdf", mime="application/pdf")
-
-# --- Cyberpunk Footer ---
-st.markdown("""
-<br><hr>
-<div style='text-align: center; color: #00ff9d; font-size: 13px;'>
-    <p>🔮 Powered by <strong>CyberFinance Neo</strong> | Designed with ⚡ by Traders, for Traders</p>
-    <p style='color:#9933ff'>Version 1.0 • All Rights Reserved • 2025</p>
-    <img src='https://media.giphy.com/media/3o7qDPxorBbvpB1Pby/giphy.gif' width='50%' style='border-radius: 10px; border: 1px solid #9933ff; margin-top: 10px;'/>
-</div>
-""", unsafe_allow_html=True)
+if __name__ == "__main__":
+    main()
