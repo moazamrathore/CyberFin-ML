@@ -4,4 +4,4 @@ numpy
 yfinance
 plotly
 scikit-learn
-reportlab
+fpdf
