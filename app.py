@@ -518,8 +518,7 @@ def display_quick_start_guide():
             </div>
         </div>
         <div style="text-align: center; margin-top: 30px;">
-            <button style="background-color: #1a0038; color: #00f2ff; border: 2px solid #00f2ff; padding: 10px 20px; 
-                           box-shadow: 0 0 10px #00f2ff; font-family: 'Press Start 2P', cursive; font-size: 0.8rem; cursor: pointer;">
+            <button style="background-color: #1a0038; color: #00f2ff; border: 2px solid #00f2ff; padding: 10px 20px; box-shadow: 0 0 10px #00f2ff; font-family: 'Press Start 2P', cursive; font-size: 0.8rem; cursor: pointer;">
                 START YOUR ML JOURNEY
             </button>
         </div>
