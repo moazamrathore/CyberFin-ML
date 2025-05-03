@@ -11,7 +11,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 # Configure page
 st.set_page_config(
-    page_title="CYBER-ML PRO MADE BY SAMAD KIANI",
+    page_title="CYBERFIN-ML",
     page_icon="https://img.icons8.com/nolan/64/cyborg.png",
     layout="wide",
     initial_sidebar_state="expanded"
