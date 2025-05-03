@@ -12,7 +12,7 @@ from sklearn.impute import SimpleImputer
 
 # Configure page
 st.set_page_config(
-    page_title="CYBER-ML PRO",
+    page_title="CYBER-ML PRO MADE BY SAMAD KIANI",
     page_icon="https://img.icons8.com/nolan/64/cyborg.png",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -145,28 +145,21 @@ st.markdown("""
         border: 1px solid #00f2ff;
         box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
     }
-    
-    /* Preprocessing section */
-    .preprocessing-panel {
-        background-color: rgba(15, 25, 40, 0.8);
-        border: 1px solid #00f2ff;
-        border-radius: 10px;
+    /* Preprocessing options */
+    .preprocessing-section {
+        background-color: rgba(25, 25, 75, 0.8);
+        border: 1px solid #ff00ff;
         padding: 15px;
-        margin-bottom: 15px;
-        box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+        border-radius: 10px;
+        margin: 10px 0;
+        box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
     }
-    
-    .preprocessing-option {
-        margin-bottom: 10px;
-        padding: 10px;
-        background-color: rgba(20, 10, 40, 0.7);
-        border-left: 3px solid #ff00ff;
-    }
-    
     .preprocessing-title {
         color: #ff00ff;
-        font-weight: bold;
-        margin-bottom: 5px;
+        text-align: center;
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+        text-shadow: 0 0 5px #ff00ff;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -307,32 +300,35 @@ def cyberpunk_scatter_plot(df, x, y):
     
     return fig
 
-# Cyberpunk actual vs predicted plot with line for actual and scatter for predicted
+# Updated cyberpunk actual vs predicted plot with line for actual and scatter for predicted
 def cyberpunk_actual_vs_predicted(results):
     fig = go.Figure()
     
-    # Sort the results by actual values to make the line continuous
-    sorted_results = results.sort_values('Actual')
-    
-    # Add actual values as a line
+    # Add actual values as a line plot
     fig.add_trace(
         go.Scatter(
-            x=sorted_results.index, 
-            y=sorted_results['Actual'], 
+            x=results.index, 
+            y=results['Actual'], 
             name='Actual', 
-            mode='lines', 
+            mode='lines+markers', 
             line=dict(
                 color='#ff00ff',
-                width=3,
+                width=2
+            ),
+            marker=dict(
+                color='#ff00ff',
+                size=4,
+                line=dict(width=1, color='#ff00ff'),
+                symbol='circle',
             )
         )
     )
     
-    # Add predicted values as scatter points
+    # Add predicted values as scatter plot
     fig.add_trace(
         go.Scatter(
-            x=sorted_results.index, 
-            y=sorted_results['Predicted'], 
+            x=results.index, 
+            y=results['Predicted'], 
             name='Predicted', 
             mode='markers', 
             marker=dict(
@@ -344,8 +340,9 @@ def cyberpunk_actual_vs_predicted(results):
         )
     )
     
+    # Update layout
     fig.update_layout(
-        xaxis_title="Index",
+        xaxis_title="Sample Index",
         yaxis_title="Value",
         height=500,
         legend=dict(font=dict(color='#00f2ff')),
@@ -383,6 +380,72 @@ def cyber_error(message):
     </div>
     """, unsafe_allow_html=True)
 
+# Apply data preprocessing
+def preprocess_data(df, preprocessing_options):
+    df_processed = df.copy()
+    
+    # Handle missing values
+    if preprocessing_options.get('handle_missing'):
+        missing_strategy = preprocessing_options.get('missing_strategy', 'mean')
+        for col in df_processed.select_dtypes(include=np.number).columns:
+            if df_processed[col].isnull().any():
+                imputer = SimpleImputer(strategy=missing_strategy)
+                df_processed[col] = imputer.fit_transform(df_processed[[col]])
+    
+    # Handle outliers
+    if preprocessing_options.get('handle_outliers'):
+        for col in df_processed.select_dtypes(include=np.number).columns:
+            if preprocessing_options.get('outlier_strategy') == 'clip':
+                q1 = df_processed[col].quantile(0.25)
+                q3 = df_processed[col].quantile(0.75)
+                iqr = q3 - q1
+                lower_bound = q1 - 1.5 * iqr
+                upper_bound = q3 + 1.5 * iqr
+                df_processed[col] = df_processed[col].clip(lower_bound, upper_bound)
+            elif preprocessing_options.get('outlier_strategy') == 'remove':
+                q1 = df_processed[col].quantile(0.25)
+                q3 = df_processed[col].quantile(0.75)
+                iqr = q3 - q1
+                lower_bound = q1 - 1.5 * iqr
+                upper_bound = q3 + 1.5 * iqr
+                mask = (df_processed[col] >= lower_bound) & (df_processed[col] <= upper_bound)
+                df_processed = df_processed[mask]
+    
+    # Apply feature transformations
+    if preprocessing_options.get('feature_transform'):
+        transform_type = preprocessing_options.get('transform_type')
+        for col in df_processed.select_dtypes(include=np.number).columns:
+            if transform_type == 'log':
+                # Handle values <= 0 by adding a small constant if needed
+                if (df_processed[col] <= 0).any():
+                    min_val = df_processed[col].min()
+                    if min_val <= 0:
+                        df_processed[col] = df_processed[col] - min_val + 0.01
+                df_processed[col] = np.log(df_processed[col])
+            elif transform_type == 'sqrt':
+                # Handle negative values
+                if (df_processed[col] < 0).any():
+                    min_val = df_processed[col].min()
+                    if min_val < 0:
+                        df_processed[col] = df_processed[col] - min_val
+                df_processed[col] = np.sqrt(df_processed[col])
+    
+    # Apply feature scaling
+    if preprocessing_options.get('feature_scaling'):
+        scaling_method = preprocessing_options.get('scaling_method')
+        numeric_cols = df_processed.select_dtypes(include=np.number).columns
+        
+        if scaling_method == 'standard':
+            scaler = StandardScaler()
+        elif scaling_method == 'minmax':
+            scaler = MinMaxScaler()
+        elif scaling_method == 'robust':
+            scaler = RobustScaler()
+            
+        df_processed[numeric_cols] = scaler.fit_transform(df_processed[numeric_cols])
+    
+    return df_processed
+
 # Main Function
 def main():
     st.markdown('<div class="main">', unsafe_allow_html=True)
@@ -393,13 +456,17 @@ def main():
     # Session state initialization
     session_defaults = {
         'data': None, 'model': None, 'features': [], 'target': None,
-        'steps': {'loaded': False, 'processed': False, 'trained': False},
+        'steps': {'loaded': False, 'processed': False, 'preprocessed': False, 'trained': False},
         'predictions': None,
         'preprocessing_options': {
-            'impute_missing': False,
-            'scaling': 'none',
-            'drop_duplicates': False,
-            'remove_outliers': False
+            'handle_missing': False,
+            'missing_strategy': 'mean',
+            'handle_outliers': False,
+            'outlier_strategy': 'clip',
+            'feature_transform': False,
+            'transform_type': 'log',
+            'feature_scaling': False,
+            'scaling_method': 'standard'
         }
     }
     for key, value in session_defaults.items():
@@ -514,191 +581,190 @@ def main():
                 <li>Upload any CSV or Excel file with numeric data</li>
                 <li>Select target variable (what you want to predict)</li>
                 <li>Choose features (variables used for prediction)</li>
-                <li>Configure data preprocessing options</li>
-                <li>Train your neural network model</li>
-                <li>Analyze results and make predictions</li>
+                <li>Preprocess data to enhance model performance</li>
+                <li>Train and evaluate your neural network</li>
             </ol>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Step 2: Data Preprocessing (NEW SECTION)
+    # Step 2: Data Preprocessing (New Section)
     if st.session_state.steps['processed']:
         st.markdown("""
-        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #00f2ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
-                <img src="https://i.gifer.com/7SVt.gif" width="30px"> 
+                <img src="https://i.gifer.com/7H27.gif" width="30px"> 
                 DATA PREPROCESSING
             </h2>
         """, unsafe_allow_html=True)
         
+        df = st.session_state.data
+        
+        # Missing values preprocessing
+        with st.expander("🧪 HANDLE MISSING VALUES"):
+            st.markdown("<div class='preprocessing-section'>", unsafe_allow_html=True)
+            
+            missing_values = df.isnull().sum().sum()
+            st.markdown(f"""
+            <div style="margin-bottom: 15px;">
+                <p style="color: #00f2ff;">DETECTED MISSING VALUES: <span style="color: #ff00ff; font-weight: bold;">{missing_values}</span></p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            handle_missing = st.checkbox("ENABLE MISSING VALUES HANDLING", 
+                                         value=st.session_state.preprocessing_options['handle_missing'])
+            
+            if handle_missing:
+                missing_strategy = st.radio("IMPUTATION STRATEGY:", 
+                                           ["mean", "median", "most_frequent", "constant"],
+                                           index=["mean", "median", "most_frequent", "constant"].index(
+                                               st.session_state.preprocessing_options['missing_strategy']))
+                
+                if missing_strategy == "constant":
+                    fill_value = st.number_input("FILL VALUE:", value=0.0, step=0.1)
+            
+            st.session_state.preprocessing_options['handle_missing'] = handle_missing
+            st.session_state.preprocessing_options['missing_strategy'] = missing_strategy if handle_missing else "mean"
+                
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Outlier detection and handling
+        with st.expander("🔍 HANDLE OUTLIERS"):
+            st.markdown("<div class='preprocessing-section'>", unsafe_allow_html=True)
+            
+            handle_outliers = st.checkbox("ENABLE OUTLIER HANDLING", 
+                                         value=st.session_state.preprocessing_options['handle_outliers'])
+            
+            if handle_outliers:
+                outlier_strategy = st.radio("OUTLIER STRATEGY:", 
+                                           ["clip", "remove"],
+                                           index=["clip", "remove"].index(
+                                               st.session_state.preprocessing_options['outlier_strategy']))
+                
+                st.info("Outliers are defined using the IQR method (values outside 1.5 * IQR)")
+            
+            st.session_state.preprocessing_options['handle_outliers'] = handle_outliers
+            st.session_state.preprocessing_options['outlier_strategy'] = outlier_strategy if handle_outliers else "clip"
+                
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Feature transformation
+        with st.expander("🔄 FEATURE TRANSFORMATION"):
+            st.markdown("<div class='preprocessing-section'>", unsafe_allow_html=True)
+            
+            feature_transform = st.checkbox("ENABLE FEATURE TRANSFORMATION", 
+                                           value=st.session_state.preprocessing_options['feature_transform'])
+            
+            if feature_transform:
+                transform_type = st.radio("TRANSFORMATION TYPE:", 
+                                         ["log", "sqrt"],
+                                         index=["log", "sqrt"].index(
+                                             st.session_state.preprocessing_options['transform_type']))
+                
+                st.info(f"Apply {transform_type} transformation to numeric features")
+            
+            st.session_state.preprocessing_options['feature_transform'] = feature_transform
+            st.session_state.preprocessing_options['transform_type'] = transform_type if feature_transform else "log"
+                
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Feature scaling
+        with st.expander("📊 FEATURE SCALING"):
+            st.markdown("<div class='preprocessing-section'>", unsafe_allow_html=True)
+            
+            feature_scaling = st.checkbox("ENABLE FEATURE SCALING", 
+                                         value=st.session_state.preprocessing_options['feature_scaling'])
+            
+            if feature_scaling:
+                scaling_method = st.radio("SCALING METHOD:", 
+                                         ["standard", "minmax", "robust"],
+                                         index=["standard", "minmax", "robust"].index(
+                                             st.session_state.preprocessing_options['scaling_method']))
+                
+                scaling_descriptions = {
+                    "standard": "Standardization (Z-score): scales data to have mean=0 and std=1",
+                    "minmax": "Min-Max Scaling: scales data to a range of [0,1]",
+                    "robust": "Robust Scaling: scales data based on median and quartiles (robust to outliers)"
+                }
+                
+                st.info(scaling_descriptions[scaling_method])
+            
+            st.session_state.preprocessing_options['feature_scaling'] = feature_scaling
+            st.session_state.preprocessing_options['scaling_method'] = scaling_method if feature_scaling else "standard"
+                
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Apply preprocessing button
+        if st.button("APPLY PREPROCESSING", key="apply_preprocessing"):
+            with st.spinner("PREPROCESSING DATA..."):
+                # Get original data
+                raw_df = st.session_state.data
+                
+                # Apply preprocessing
+                preprocessed_df = preprocess_data(raw_df, st.session_state.preprocessing_options)
+                
+                # Store preprocessed data
+                st.session_state.data_preprocessed = preprocessed_df
+                st.session_state.steps['preprocessed'] = True
+                
+                # Display success message
+                cyber_success("DATA PREPROCESSING COMPLETE")
+                
+                # Show before/after stats
+                st.markdown("""
+                <h3 style="color: #ff00ff; text-align: center; margin-top: 20px;">PREPROCESSING RESULTS</h3>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("<h4 style='color: #00f2ff; text-align: center;'>BEFORE</h4>", unsafe_allow_html=True)
+                    st.dataframe(raw_df.describe().style.format("{:.2f}"), height=200)
+                    
+                with col2:
+                    st.markdown("<h4 style='color: #00f2ff; text-align: center;'>AFTER</h4>", unsafe_allow_html=True)
+                    st.dataframe(preprocessed_df.describe().style.format("{:.2f}"), height=200)
+        
+        # Display preprocessing animation
         st.markdown("""
         <div style="text-align: center; margin: 20px 0;">
-            <img src="https://i.gifer.com/embedded/download/KUxx.gif" width="150px">
-            <p style="color: #00f2ff; margin-top: 15px; font-family: 'Courier New', monospace; font-size: 1.2rem;">
-                CONFIGURE DATA PREPROCESSING OPTIONS
-            </p>
+            <img src="https://i.gifer.com/embedded/download/XVnS.gif" width="100px" style="margin-bottom: 10px;">
         </div>
         """, unsafe_allow_html=True)
         
-        # Preprocessing options section
-        col1, col2 = st.columns(2)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Step 3: Data Analysis
+    if st.session_state.steps['processed']:
+        st.markdown("""
+        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+            <h2 style="display: flex; align-items: center; gap: 10px;">
+                <img src="https://i.gifer.com/XOsX.gif" width="30px"> 
+                DATA ANALYSIS
+            </h2>
+        """, unsafe_allow_html=True)
         
-        with col1:
-            st.markdown("<div class='preprocessing-panel'>", unsafe_allow_html=True)
-            st.markdown("<h4 style='color: #ff00ff;'>MISSING VALUES HANDLING</h4>", unsafe_allow_html=True)
-            
-            impute_missing = st.checkbox("IMPUTE MISSING VALUES", value=st.session_state.preprocessing_options['impute_missing'])
-            if impute_missing:
-                impute_strategy = st.selectbox("IMPUTATION STRATEGY:", 
-                                               ["mean", "median", "most_frequent"], 
-                                               index=0)
-                st.session_state.preprocessing_options['impute_strategy'] = impute_strategy
-            
-            st.markdown("<div class='preprocessing-option'>", unsafe_allow_html=True)
-            st.markdown("<div class='preprocessing-title'>DATA QUALITY</div>", unsafe_allow_html=True)
-            drop_duplicates = st.checkbox("DROP DUPLICATE ROWS", value=st.session_state.preprocessing_options['drop_duplicates'])
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("<div class='preprocessing-panel'>", unsafe_allow_html=True)
-            st.markdown("<h4 style='color: #ff00ff;'>FEATURE SCALING</h4>", unsafe_allow_html=True)
-            
-            scaling_options = ["none", "standard", "minmax", "robust"]
-            scaling_labels = ["NONE", "STANDARD SCALER", "MIN-MAX SCALER", "ROBUST SCALER"]
-            
-            scaling_index = scaling_options.index(st.session_state.preprocessing_options.get('scaling', 'none'))
-            scaling = st.selectbox("SCALING METHOD:", scaling_labels, index=scaling_index)
-            
-            # Map the selection back to the actual scaler name
-            st.session_state.preprocessing_options['scaling'] = scaling_options[scaling_labels.index(scaling)]
-            
-            st.markdown("<div class='preprocessing-option'>", unsafe_allow_html=True)
-            st.markdown("<div class='preprocessing-title'>OUTLIER HANDLING</div>", unsafe_allow_html=True)
-            remove_outliers = st.checkbox("REMOVE OUTLIERS", value=st.session_state.preprocessing_options['remove_outliers'])
-            if remove_outliers:
-                outlier_threshold = st.slider("OUTLIER THRESHOLD (Z-SCORE):", 1.5, 5.0, 3.0, 0.1)
-                st.session_state.preprocessing_options['outlier_threshold'] = outlier_threshold
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Update preprocessing options in session state
-        st.session_state.preprocessing_options['impute_missing'] = impute_missing
-        st.session_state.preprocessing_options['drop_duplicates'] = drop_duplicates
-        st.session_state.preprocessing_options['remove_outliers'] = remove_outliers
-        
-        if st.button("APPLY PREPROCESSING", key="apply_preprocessing"):
-            # Get the original data
-            df = st.session_state.data.copy()
-            features = st.session_state.features
-            target = st.session_state.target
-            
-            # Store preprocessing information for user display
-            preprocessing_steps = []
-            
-            # Apply preprocessing based on selected options
-            try:
-                # 1. Drop duplicates if selected
-                if st.session_state.preprocessing_options['drop_duplicates']:
-                    original_rows = len(df)
-                    df = df.drop_duplicates()
-                    removed_rows = original_rows - len(df)
-                    preprocessing_steps.append(f"Removed {removed_rows} duplicate rows")
-                
-                # 2. Handle missing values if selected
-                if st.session_state.preprocessing_options['impute_missing']:
-                    strategy = st.session_state.preprocessing_options['impute_strategy']
-                    imputer = SimpleImputer(strategy=strategy)
-                    
-                    # Only impute the selected features, not all columns
-                    for feature in features:
-                        missing_count = df[feature].isna().sum()
-                        if missing_count > 0:
-                            df[feature] = imputer.fit_transform(df[feature].values.reshape(-1, 1)).flatten()
-                            preprocessing_steps.append(f"Imputed {missing_count} missing values in '{feature}' using {strategy}")
-                    
-                    # Also handle missing values in target if any
-                    missing_count = df[target].isna().sum()
-                    if missing_count > 0:
-                        df[target] = imputer.fit_transform(df[target].values.reshape(-1, 1)).flatten()
-                        preprocessing_steps.append(f"Imputed {missing_count} missing values in target '{target}' using {strategy}")
-                
-                # 3. Remove outliers if selected
-                if st.session_state.preprocessing_options['remove_outliers']:
-                    threshold = st.session_state.preprocessing_options['outlier_threshold']
-                    original_rows = len(df)
-                    
-                    # Calculate z-scores for each feature and remove rows with outliers
-                    for feature in features:
-                        z_scores = np.abs((df[feature] - df[feature].mean()) / df[feature].std())
-                        df = df[z_scores < threshold]
-                    
-                    removed_rows = original_rows - len(df)
-                    preprocessing_steps.append(f"Removed {removed_rows} outlier rows using z-score threshold of {threshold}")
-                
-                # Store the preprocessed data back to session state
-                st.session_state.data_preprocessed = df
-                st.session_state.preprocessing_steps = preprocessing_steps
-                st.session_state.steps['preprocessed'] = True
-                
-                cyber_success("PREPROCESSING COMPLETED SUCCESSFULLY")
-                
-                # Show preprocessing summary
-                if preprocessing_steps:
-                    st.markdown("<h4 style='color: #00f2ff;'>PREPROCESSING SUMMARY:</h4>", unsafe_allow_html=True)
-                    for step in preprocessing_steps:
-                        st.markdown(f"<li style='color: #00ff9f; margin-left: 20px;'>{step}</li>", unsafe_allow_html=True)
-                    
-                    # Show before/after data shape
-                    original_shape = st.session_state.data.shape
-                    new_shape = df.shape
-                    st.markdown(f"""
-                    <div style="display: flex; justify-content: space-around; margin-top: 20px;">
-                        <div style="text-align: center; color: #ff00ff;">
-                            <div>ORIGINAL DATA</div>
-                            <div style="font-size: 1.2rem; color: #00f2ff;">{original_shape[0]} rows × {original_shape[1]} columns</div>
-                        </div>
-                        <div style="text-align: center; color: #ff00ff;">
-                            <div>PREPROCESSED DATA</div>
-                            <div style="font-size: 1.2rem; color: #00f2ff;">{new_shape[0]} rows × {new_shape[1]} columns</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.warning("No preprocessing steps were applied based on your selections.")
-            
-            except Exception as e:
-                cyber_error(f"ERROR DURING PREPROCESSING: {str(e)}")
-        
-        # Allow viewing the preprocessed data
-        if st.session_state.get('data_preprocessed') is not None:
-            if st.button("VIEW PREPROCESSED DATA", key="view_preprocessed"):
-                st.dataframe(st.session_state.data_preprocessed.head().style.format("{:.2f}"), height=250)
-        
-        # Data analysis section
-        if st.session_state.get('data_preprocessed') is not None:
+        # Use preprocessed data if available, otherwise use original data
+        if st.session_state.steps.get('preprocessed') and 'data_preprocessed' in st.session_state:
             df = st.session_state.data_preprocessed
+            st.success("Using preprocessed data for analysis")
         else:
             df = st.session_state.data
-        
+            st.info("Using original data for analysis (no preprocessing applied)")
+            
         features = st.session_state.features
         target = st.session_state.target
         
-        # Feature-target relationship visualization (without correlation matrix)
+        # Feature-target relationship visualization
         st.markdown("""
-        <h3 style="color: #ff00ff; text-align: center; margin-top: 20px;">
-            FEATURE-TARGET RELATIONSHIPS
-        </h3>
+        <h3 style="color: #ff00ff; text-align: center;">FEATURE-TARGET RELATIONSHIPS</h3>
         """, unsafe_allow_html=True)
         
         selected_feature = st.selectbox("SELECT FEATURE TO PLOT:", features)
         fig = cyberpunk_scatter_plot(df, selected_feature, target)
         st.plotly_chart(fig, use_container_width=True)
-        
+            
         st.markdown("""
         <div style="text-align: center; margin: 20px 0;">
             <img src="https://i.gifer.com/A34R.gif" width="100px" style="margin-bottom: 10px;">
@@ -710,10 +776,10 @@ def main():
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Step 3: Model Training
+    # Step 4: Model Training
     if st.session_state.steps.get('ready_for_model'):
         st.markdown("""
-        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #00f2ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
                 <img src="https://i.gifer.com/3Q7h.gif" width="30px"> 
                 MODEL TRAINING
@@ -721,7 +787,7 @@ def main():
         """, unsafe_allow_html=True)
         
         # Use preprocessed data if available, otherwise use original data
-        if st.session_state.get('data_preprocessed') is not None:
+        if st.session_state.steps.get('preprocessed') and 'data_preprocessed' in st.session_state:
             df = st.session_state.data_preprocessed
         else:
             df = st.session_state.data
@@ -734,31 +800,14 @@ def main():
         
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
         
-        # Apply scaling based on the selected method
-        scaling_method = st.session_state.preprocessing_options.get('scaling', 'none')
-        
-        if scaling_method == 'standard':
+        # Only apply scaling if not already done in preprocessing
+        if not st.session_state.preprocessing_options.get('feature_scaling'):
             scaler = StandardScaler()
-        elif scaling_method == 'minmax':
-            scaler = MinMaxScaler()
-        elif scaling_method == 'robust':
-            scaler = RobustScaler()
-        else:  # 'none'
-            # Create a dummy scaler that doesn't transform the data
-            class IdentityScaler:
-                def fit_transform(self, X):
-                    return X
-                def transform(self, X):
-                    return X
-            scaler = IdentityScaler()
-        
-        # Apply scaling only if not using dummy scaler
-        if scaling_method != 'none':
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
         else:
-            X_train_scaled = X_train
-            X_test_scaled = X_test
+            X_train_scaled = X_train.values
+            X_test_scaled = X_test.values
         
         model = LinearRegression() if model_type == "Linear Regression" else RandomForestRegressor(n_estimators=100, random_state=42)
         
@@ -784,10 +833,10 @@ def main():
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Step 4: Evaluation
+    # Step 5: Evaluation
     if st.session_state.steps.get('trained'):
         st.markdown("""
-        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #00f2ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+        <div style="background-color: rgba(20, 10, 40, 0.7); border: 1px solid #ff00ff; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
             <h2 style="display: flex; align-items: center; gap: 10px;">
                 <img src="https://i.gifer.com/7V7z.gif" width="30px"> 
                 MODEL EVALUATION
@@ -826,7 +875,7 @@ def main():
         
         results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred}).reset_index(drop=True)
         
-        # Modified plot with line for actual values and scatter for predicted values
+        # Use updated visualization function
         fig = cyberpunk_actual_vs_predicted(results)
         st.plotly_chart(fig, use_container_width=True)
         
@@ -858,7 +907,7 @@ def main():
         <div style="text-align: center; margin-top: 30px; opacity: 0.7;">
             <img src="https://i.gifer.com/FEc.gif" width="400px">
             <p style="color: #00f2ff; font-family: 'Courier New', monospace; margin-top: 10px; font-size: 0.8rem;">
-                CYBER-ML v2.0.77 | © MOAZAM RATHORE | CYBER FINANCE ML
+                CYBER-ML v2.0.77 | ©  MOAZAM RATHORE | CYBER FINANCE ML
             </p>
         </div>
         """, unsafe_allow_html=True)
