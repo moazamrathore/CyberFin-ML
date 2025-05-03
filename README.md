@@ -62,7 +62,7 @@ The application requires the following Python packages:
 streamlit run app.py
 ```
 
-2. Access the app in your browser (usually at http://localhost:8501)
+2. Access the app in your browser (https://cyberfin-ml-e98ezqteqlgvvzqzqlkxyj.streamlit.app/)
 
 3. Follow the guided workflow:
    - Upload your dataset (CSV or Excel)
