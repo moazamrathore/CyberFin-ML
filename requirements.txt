@@ -6,3 +6,5 @@ scikit-learn
 matplotlib
 openpyxl
 pillow
+scipy
+statsmodels
