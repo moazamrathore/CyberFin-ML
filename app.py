@@ -11,7 +11,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 # Configure page
 st.set_page_config(
-    page_title="CYBERFIN-ML",
+    page_title="CYBER-ML PRO MADE BY SAMAD KIANI",
     page_icon="https://img.icons8.com/nolan/64/cyborg.png",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -208,14 +208,16 @@ def cyberpunk_feature_importance(importance_df):
 
 # Cyberpunk scatter plot with neon styling
 def cyberpunk_scatter_plot(df, x, y):
+    # Create scatter plot without trendline first
     fig = px.scatter(
         df, 
         x=x, 
         y=y, 
-        trendline="ols", 
         height=400,
         color_discrete_sequence=['#ff00ff']
     )
+    
+    # Update marker styling
     fig.update_traces(
         marker=dict(
             size=8,
@@ -224,6 +226,42 @@ def cyberpunk_scatter_plot(df, x, y):
             opacity=0.8
         )
     )
+    
+    # Try to add trendline manually using numpy's polyfit
+    try:
+        import numpy as np
+        from scipy import stats
+        
+        # Get x and y values
+        x_values = df[x].values
+        y_values = df[y].values
+        
+        # Remove NaN values
+        mask = ~np.isnan(x_values) & ~np.isnan(y_values)
+        x_values = x_values[mask]
+        y_values = y_values[mask]
+        
+        if len(x_values) > 1:
+            # Calculate trendline
+            slope, intercept, r_value, p_value, std_err = stats.linregress(x_values, y_values)
+            x_range = np.linspace(min(x_values), max(x_values), 100)
+            y_range = slope * x_range + intercept
+            
+            # Add trendline to plot
+            fig.add_trace(
+                go.Scatter(
+                    x=x_range,
+                    y=y_range,
+                    mode='lines',
+                    line=dict(color='#00f2ff', width=3),
+                    name='Trend'
+                )
+            )
+    except:
+        # If trendline calculation fails, just continue without it
+        pass
+        
+    # Update layout
     fig.update_layout(
         plot_bgcolor='rgba(10, 10, 30, 0.7)',
         paper_bgcolor='rgba(10, 10, 30, 0)',
@@ -242,11 +280,7 @@ def cyberpunk_scatter_plot(df, x, y):
             zerolinecolor='#ff00ff'
         )
     )
-    # Add cyberpunk-styled trendline
-    fig.update_traces(
-        line=dict(color='#00f2ff', width=3),
-        selector=dict(type='scatter', mode='lines')
-    )
+    
     return fig
 
 # Cyberpunk correlation matrix
