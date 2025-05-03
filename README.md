@@ -1,9 +1,18 @@
-# CYBER-ML: Neural Network Prediction Engine
+# 📊 CYBER-ML: Neural Network Prediction Engine
 <div align="center">
   <h3>A cyberpunk-themed machine learning application for predictive analytics</h3>
 </div>
+**AF3005 – Programming for Finance**  
 
-## 📊 Overview
+📍 **FAST National University of Computer and Emerging Sciences (FAST-NUCES), Islamabad**  
+👨‍🏫 **Instructor:** Dr. Usama Arshad (Assistant Professor, FSM)  
+🎓 **Program:** BS Financial Technology (BSFT)  
+📅 **Semester:** Spring 2025  
+📌 **Sections:** BSFT06A, BSFT06B, BSFT06C  
+
+---
+
+## 📌 Overview
 
 CYBER-ML is a streamlined, cyberpunk-themed machine learning application built with Streamlit. It provides an intuitive interface for data upload, preprocessing, model training, and evaluation - all within a visually stunning neon interface. Perfect for both ML beginners and experienced data scientists who want to quickly build and validate regression models without writing code.
 
