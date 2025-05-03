@@ -35,7 +35,7 @@ st.set_page_config(
     }
     .main {
         background-color: rgba(10, 15, 30, 0.85);
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 10px;
         border: 1px solid #00f2ff;
         box-shadow: 0 0 15px #00f2ff, 0 0 15px rgba(255, 0, 255, 0.5);
